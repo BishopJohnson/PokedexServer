@@ -1,44 +1,37 @@
 // Node modules
-const mysqlx = require('@mysql/xdevapi');
+const mysql = require('mysql2');
 
-// Custom modules
-const config = require('./../../enc/config').config;
+const pool = mysql.createPool({
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+  socketPath: `/cloudsql/${process.env.CLOUD_SQL_CONNECTION_NAME}`,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
 
-module.exports = function(name = '') {
+module.exports = async function(name = '') {
+  var promisePool = pool.promise(); // A promise wrapped instance of the pool
+
+  // Execute the query with a prepared statement
+  var [rows, fields] = await promisePool.execute(
+    `SELECT * FROM pokemon WHERE name LIKE ? ORDER BY id ASC`,
+    [`${name}%`] // prepared for like statement
+  );
+
   var entries = [];
-
-  return mysqlx.getSession(config)
-  .then(session => {
-    return session.getSchema(config.schema).getTable('pokemon')
-    .select(['id', 'name', 'category', 'primary_type', 'secondary_type'])
-    .where(`name LIKE '${name}%'`)
-    .orderBy('id asc')
-    .execute(row => { // Append the data to the list
-      var entry = {
-        id: row[0],
-        name: row[1],
-        category: row[2],
-        primary_type: row[3],
-        secondary_type: row[4]
+  for (var i = 0; i < rows.length; i++) {
+    entries.push(
+      {
+        id: rows[i].id,
+        name: rows[i].name,
+        category: rows[i].category,
+        primary_type: rows[i].primary_type,
+        secondary_type: rows[i].secondary_type
       }
+    );
+  }
 
-      entries.push(entry);
-    })
-    .then(() => {
-      return session.close();
-    })
-    .catch(err => {
-      return session.close()
-      .then(() => { throw err; })
-      .catch(err => { throw err; });
-    });
-  })
-  .then(() => { // Return the results when done
-    return entries;
-  })
-  .catch(err => {
-    console.error(err);
-
-    return null;
-  });
+  return entries;
 }

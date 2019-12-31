@@ -4,4 +4,4 @@
 /node_modules
 
 # sensative files
-/enc
+*.yaml
