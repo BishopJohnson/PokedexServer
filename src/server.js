@@ -5,10 +5,11 @@ const express = require('express');
 const pokedexController = require('./controllers/pokedexController');
 
 const app = express();
-const port = 5000;
 
 pokedexController(app);
 
-app.listen(port, () => {
-  console.log(`Server listening to port ${port}`);
+// Listen to Google App Engine port or port 8080
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}...`);
 });
